@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tasks</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --accent: #e8a020;
+    --accent2: #c45c1a;
+    --text: #f0ece4;
+    --muted: #7a7570;
+    --success: #4caf50;
+    --warn: #ff9800;
+    --fail: #e53935;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 100px;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1a1208, #0f0f0f);
+    border-bottom: 2px solid var(--accent);
+    padding: 18px 16px 12px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  nav {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 62px; z-index: 99;
+  }
+  nav button {
+    flex: 1; padding: 12px 6px; background: none; border: none;
+    color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+  }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .section { display: none; padding: 16px; }
+  .section.active { display: block; }
+
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem;
+    letter-spacing: 2px; color: var(--accent); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px;
+    overflow: visible;
+  }
+
+  .task-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 14px; border-bottom: 1px solid var(--border);
+  }
+  .task-item:last-child { border-bottom: none; }
+
+  .status-btn {
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 2px solid var(--border); background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; cursor: pointer; flex-shrink: 0; transition: all 0.15s;
+  }
+  .status-btn.done { border-color: var(--success); background: rgba(76,175,80,0.15); }
+  .status-btn.tried { border-color: var(--warn); background: rgba(255,152,0,0.15); }
+  .status-btn.failed { border-color: var(--fail); background: rgba(229,57,53,0.15); }
+
+  /* Single shared popup — fixed position, shown via JS */
+  #status-popup-menu {
+    display: none; position: fixed; z-index: 9999;
+    background: #2a2a2a; border: 2px solid var(--accent);
+    border-radius: 14px; padding: 8px; gap: 8px; flex-direction: row;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+  }
+  #status-popup-menu.show { display: flex; }
+  #status-popup-menu button {
+    width: 52px; height: 52px; border-radius: 10px; border: none;
+    font-size: 1.3rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pop-done { background: rgba(76,175,80,0.25); }
+  .pop-tried { background: rgba(255,152,0,0.25); }
+  .pop-fail { background: rgba(229,57,53,0.25); }
+
+  .task-text { flex: 1; font-size: 0.95rem; line-height: 1.4; }
+  .task-text.done { text-decoration: line-through; color: var(--muted); }
+
+  .delete-btn {
+    width: 28px; height: 28px; background: none; border: none;
+    color: var(--muted); font-size: 1.1rem; cursor: pointer;
+    border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .delete-btn:active { background: rgba(229,57,53,0.2); color: var(--fail); }
+
+  .add-row { display: flex; gap: 8px; margin-top: 10px; }
+  .add-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none;
+  }
+  .add-row input:focus { border-color: var(--accent); }
+  .add-row input::placeholder { color: var(--muted); }
+  .add-btn {
+    background: var(--accent); border: none; border-radius: 10px;
+    width: 46px; height: 46px; color: #0f0f0f; font-size: 1.4rem;
+    font-weight: bold; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+  }
+  .add-btn:active { background: var(--accent2); }
+
+  .backlog-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+  }
+  .backlog-item:last-child { border-bottom: none; }
+  .backlog-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
+  .backlog-content { flex: 1; }
+  .backlog-text { font-size: 0.95rem; }
+  .backlog-meta { font-size: 0.75rem; color: var(--accent); margin-top: 2px; font-weight: 500; }
+  .backlog-meta.overdue { color: var(--fail); }
+  .backlog-meta.soon { color: var(--warn); }
+  .backlog-add { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .backlog-add input {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none; width: 100%;
+  }
+  .backlog-add input:focus { border-color: var(--accent); }
+  .backlog-add input::placeholder { color: var(--muted); }
+  .backlog-add-row { display: flex; gap: 8px; }
+  .backlog-add-row input { flex: 1; }
+  input[type="date"] { color-scheme: dark; }
+
+  .project-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+  }
+  .project-header {
+    display: flex; align-items: center; padding: 14px 16px;
+    gap: 10px; cursor: pointer; user-select: none;
+  }
+  .project-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .project-info { flex: 1; }
+  .project-name { font-weight: 600; font-size: 1rem; }
+  .project-summary { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .profit-pill { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+  .profit-pill.positive { background: rgba(76,175,80,0.2); color: var(--success); }
+  .profit-pill.negative { background: rgba(229,57,53,0.2); color: var(--fail); }
+  .profit-pill.neutral { background: rgba(122,117,112,0.2); color: var(--muted); }
+  .chevron { color: var(--muted); font-size: 0.8rem; transition: transform 0.2s; }
+  .chevron.open { transform: rotate(90deg); }
+  .project-body { display: none; border-top: 1px solid var(--border); }
+  .project-body.open { display: block; }
+
+  .expense-section { padding: 14px 16px; }
+  .expense-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+  .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: var(--surface2); border-radius: 8px; margin-bottom: 6px; }
+  .expense-name { font-size: 0.9rem; }
+  .expense-right { display: flex; align-items: center; gap: 10px; }
+  .expense-amount { font-size: 0.9rem; font-weight: 600; color: var(--fail); }
+  .expense-del { background: none; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 2px 6px; }
+
+  .totals-row {
+    display: flex; justify-content: space-between; padding: 10px 12px;
+    background: rgba(232,160,32,0.07); border-radius: 8px; margin-top: 4px;
+    border: 1px solid rgba(232,160,32,0.2);
+  }
+  .totals-row span { font-size: 0.85rem; color: var(--muted); }
+  .totals-row strong { font-size: 0.95rem; }
+
+  /* FIX: expense add row with visible + button */
+  .expense-add-row { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
+  .expense-add-row input {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 10px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none;
+  }
+  .expense-add-row input:focus { border-color: var(--accent); }
+  .expense-add-row input::placeholder { color: var(--muted); }
+  .expense-add-row input.desc { flex: 2; min-width: 0; }
+  .expense-add-row input.amt { flex: 1; min-width: 0; }
+  .exp-add-btn {
+    background: var(--accent); border: none; border-radius: 8px;
+    width: 44px; height: 44px; min-width: 44px;
+    color: #0f0f0f; font-size: 1.5rem; font-weight: bold;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .exp-add-btn:active { background: var(--accent2); }
+
+  /* FIX: sale price uses onblur so it doesn't close while typing */
+  .sale-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px 14px; border-top: 1px solid var(--border);
+  }
+  .sale-row label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+  .sale-row input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none;
+  }
+  .sale-row input:focus { border-color: var(--success); }
+  .sale-result { white-space: nowrap; font-size: 0.9rem; font-weight: 600; min-width: 70px; text-align: right; }
+  .sale-result.pos { color: var(--success); }
+  .sale-result.neg { color: var(--fail); }
+
+  .add-project-form {
+    background: var(--surface); border: 1px dashed var(--border);
+    border-radius: var(--radius); padding: 16px; margin-top: 10px; display: none;
+  }
+  .add-project-form.show { display: block; }
+  .add-project-form input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; margin-bottom: 8px;
+  }
+  .add-project-form input:focus { border-color: var(--accent); }
+  .add-project-form input::placeholder { color: var(--muted); }
+  .form-btn {
+    padding: 11px 18px; border-radius: 8px; border: none;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  }
+  .form-btn.primary { background: var(--accent); color: #0f0f0f; width: 100%; margin-top: 4px; }
+  .form-btn.primary:active { background: var(--accent2); }
+
+  .fab {
+    position: fixed; bottom: 24px; right: 20px;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--accent); border: none; color: #0f0f0f;
+    font-size: 1.6rem; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 4px 20px rgba(232,160,32,0.4);
+    transition: all 0.2s; z-index: 50;
+  }
+  .fab:active { transform: scale(0.92); }
+
+  .empty { text-align: center; padding: 30px 20px; color: var(--muted); font-size: 0.9rem; }
+  .empty .icon { font-size: 2rem; margin-bottom: 8px; }
+
+  .overlay { display: none; position: fixed; inset: 0; z-index: 9000; }
+  .overlay.show { display: block; }
+
+  .delete-project-btn {
+    background: none; border: none; color: var(--fail);
+    font-size: 0.8rem; cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; font-family: 'DM Sans', sans-serif; opacity: 0.7;
+  }
+  .delete-project-btn:active { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚙️ TASKS</h1>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('daily')">📋 Daily</button>
+  <button onclick="showTab('backlog')">⏳ Backlog</button>
+  <button onclick="showTab('projects')">🔧 Projects</button>
+</nav>
+
+<div id="daily" class="section active">
+  <div class="section-label">Today's Tasks</div>
+  <div class="card"><div id="daily-list"></div></div>
+  <div class="add-row">
+    <input type="text" id="daily-input" placeholder="Add a task..." />
+    <button class="add-btn" onclick="addDaily()">+</button>
+  </div>
+</div>
+
+<div id="backlog" class="section">
+  <div class="section-label">On The Horizon</div>
+  <div class="card"><div id="backlog-list"></div></div>
+  <div class="backlog-add">
+    <input type="text" id="backlog-input" placeholder="What's pending?..." />
+    <div class="backlog-add-row">
+      <input type="date" id="backlog-date" />
+      <button class="add-btn" onclick="addBacklog()">+</button>
+    </div>
+  </div>
+</div>
+
+<div id="projects" class="section">
+  <div class="section-label">Equipment Projects</div>
+  <div id="project-list"></div>
+  <button class="fab" id="fab-btn" onclick="toggleProjectForm()">+</button>
+  <div class="add-project-form" id="project-form">
+    <input type="text" id="proj-name" placeholder="Item name (e.g. Troy-Bilt Mower)" />
+    <input type="text" id="proj-note" placeholder="Notes / condition..." />
+    <input type="number" id="proj-buy" placeholder="Purchase price ($)" step="0.01" />
+    <button class="form-btn primary" onclick="addProject()">Add Project</button>
+  </div>
+</div>
+
+<!-- Shared popup outside all cards so it's never clipped -->
+<div id="status-popup-menu">
+  <button class="pop-done" onclick="applyStatus('done')">✅</button>
+  <button class="pop-tried" onclick="applyStatus('tried')">〜</button>
+  <button class="pop-fail" onclick="applyStatus('failed')">✗</button>
+</div>
+<div class="overlay" id="overlay" onclick="closePopup()"></div>
+
+<script>
+  let state = { daily: [], backlog: [], projects: [] };
+  let activeTaskId = null;
+
+  function save() { try { localStorage.setItem('shopTasks', JSON.stringify(state)); } catch(e) {} }
+  function load() {
+    try { const d = localStorage.getItem('shopTasks'); if (d) state = JSON.parse(d); } catch(e) {}
+    render();
+  }
+
+  function showTab(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('nav button')[['daily','backlog','projects'].indexOf(id)].classList.add('active');
+    closePopup();
+  }
+
+  function openPopup(taskId, btnEl) {
+    closePopup();
+    activeTaskId = taskId;
+    const menu = document.getElementById('status-popup-menu');
+    const rect = btnEl.getBoundingClientRect();
+    const menuW = 188;
+    let left = rect.left;
+    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    menu.style.left = left + 'px';
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.classList.add('show');
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  function closePopup() {
+    document.getElementById('status-popup-menu').classList.remove('show');
+    document.getElementById('overlay').classList.remove('show');
+    activeTaskId = null;
+  }
+
+  function applyStatus(status) {
+    if (activeTaskId === null) return;
+    const t = state.daily.find(t => t.id === activeTaskId);
+    if (t) { t.status = status; save(); renderDaily(); }
+    closePopup();
+  }
+
+  function addDaily() {
+    const inp = document.getElementById('daily-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    state.daily.push({ id: Date.now(), text, status: 'none' });
+    inp.value = '';
+    save(); renderDaily();
+  }
+  document.getElementById('daily-input').addEventListener('keydown', e => { if (e.key === 'Enter') addDaily(); });
+
+  function deleteDaily(id) { state.daily = state.daily.filter(t => t.id !== id); save(); renderDaily(); }
+
+  function statusIcon(s) { return s==='done'?'✅':s==='tried'?'〜':s==='failed'?'✗':''; }
+  function statusClass(s) { return s==='done'?'done':s==='tried'?'tried':s==='failed'?'failed':''; }
+
+  function renderDaily() {
+    const list = document.getElementById('daily-list');
+    if (!state.daily.length) {
+      list.innerHTML = '<div class="empty"><div class="icon">📋</div>No tasks yet. Add one below!</div>'; return;
+    }
+    list.innerHTML = state.daily.map(t => `
+      <div class="task-item">
+        <div class="status-btn ${statusClass(t.status)}" onclick="openPopup(${t.id},this)">${statusIcon(t.status)}</div>
+        <span class="task-text ${t.status==='done'?'done':''}">${escHtml(t.text)}</span>
+        <button class="delete-btn" onclick="deleteDaily(${t.id})">🗑</button>
+      </div>`).join('');
+  }
+
+  function addBacklog() {
+    const text = document.getElementById('backlog-input').value.trim();
+    const date = document.getElementById('backlog-date').value;
+    if (!text) return;
+    state.backlog.push({ id: Date.now(), text, date });
+    document.getElementById('backlog-input').value = '';
+    document.getElementById('backlog-date').value = '';
+    save(); renderBacklog();
+  }
+  document.getElementById('backlog-input').addEventListener('keydown', e => { if (e.key === 'Enter') addBacklog(); });
+  function deleteBacklog(id) { state.backlog = state.backlog.filter(b => b.id !== id); save(); renderBacklog(); }
+
+  function renderBacklog() {
+    const list = document.getElementById('backlog-list');
+    if (!state.backlog.length) {
+      list.innerHTML = '<div class="empty"><div class="icon">⏳</div>Nothing pending yet.</div>'; return;
+    }
+    const today = new Date(); today.setHours(0,0,0,0);
+    list.innerHTML = state.backlog.map(b => {
+      let meta = '', metaClass = '';
+      if (b.date) {
+        const d = new Date(b.date + 'T00:00:00');
+        const diff = Math.round((d - today) / 86400000);
+        if (diff < 0) { meta = `${Math.abs(diff)}d overdue`; metaClass = 'overdue'; }
+        else if (diff === 0) { meta = 'Due today'; metaClass = 'soon'; }
+        else if (diff <= 3) { meta = `${diff}d away`; metaClass = 'soon'; }
+        else { meta = `${diff} days away`; }
+      }
+      return `<div class="backlog-item">
+        <div class="backlog-dot"></div>
+        <div class="backlog-content">
+          <div class="backlog-text">${escHtml(b.text)}</div>
+          ${meta ? `<div class="backlog-meta ${metaClass}">${meta}</div>` : ''}
+        </div>
+        <button class="delete-btn" onclick="deleteBacklog(${b.id})">🗑</button>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleProjectForm() {
+    const form = document.getElementById('project-form');
+    form.classList.toggle('show');
+    document.getElementById('fab-btn').textContent = form.classList.contains('show') ? '×' : '+';
+  }
+
+  function addProject() {
+    const name = document.getElementById('proj-name').value.trim();
+    const note = document.getElementById('proj-note').value.trim();
+    const buy = parseFloat(document.getElementById('proj-buy').value) || 0;
+    if (!name) return;
+    state.projects.push({ id: Date.now(), name, note, buyCost: buy, salePrice: 0, expenses: [] });
+    document.getElementById('proj-name').value = '';
+    document.getElementById('proj-note').value = '';
+    document.getElementById('proj-buy').value = '';
+    toggleProjectForm();
+    save(); renderProjects();
+  }
+
+  function deleteProject(id) {
+    if (!confirm('Delete this project?')) return;
+    state.projects = state.projects.filter(p => p.id !== id);
+    save(); renderProjects();
+  }
+
+  function addExpense(projId) {
+    const descEl = document.getElementById('exp-desc-' + projId);
+    const amtEl = document.getElementById('exp-amt-' + projId);
+    const desc = descEl.value.trim();
+    const amt = parseFloat(amtEl.value) || 0;
+    if (!desc || !amt) return;
+    const proj = state.projects.find(p => p.id === projId);
+    if (proj) {
+      proj.expenses.push({ id: Date.now(), desc, amt });
+      descEl.value = ''; amtEl.value = '';
+      save(); renderProjects();
+    }
+  }
+
+  function deleteExpense(projId, expId) {
+    const proj = state.projects.find(p => p.id === projId);
+    if (proj) { proj.expenses = proj.expenses.filter(e => e.id !== expId); save(); renderProjects(); }
+  }
+
+  // Sale price: saves on blur (when you tap away) so typing isn't interrupted
+  function commitSale(projId, val) {
+    const proj = state.projects.find(p => p.id === projId);
+    if (!proj) return;
+    proj.salePrice = parseFloat(val) || 0;
+    save();
+    const totalExp = proj.expenses.reduce((s, e) => s + e.amt, 0) + (proj.buyCost || 0);
+    const profit = proj.salePrice - totalExp;
+    const resultEl = document.getElementById('sale-result-' + projId);
+    const pillEl = document.getElementById('pill-' + projId);
+    if (resultEl) {
+      if (proj.salePrice > 0) {
+        resultEl.textContent = profit >= 0 ? '✅ +$' + profit.toFixed(2) : '❌ -$' + Math.abs(profit).toFixed(2);
+        resultEl.className = 'sale-result ' + (profit >= 0 ? 'pos' : 'neg');
+        if (pillEl) {
+          pillEl.textContent = profit >= 0 ? '+$' + profit.toFixed(2) : '-$' + Math.abs(profit).toFixed(2);
+          pillEl.className = 'profit-pill ' + (profit >= 0 ? 'positive' : 'negative');
+        }
+      } else {
+        resultEl.textContent = '—';
+        resultEl.className = 'sale-result';
+        if (pillEl) { pillEl.textContent = 'No sale set'; pillEl.className = 'profit-pill neutral'; }
+      }
+    }
+  }
+
+  function toggleProject(id) {
+    document.getElementById('proj-body-' + id).classList.toggle('open');
+    document.getElementById('chev-' + id).classList.toggle('open');
+  }
+
+  function renderProjects() {
+    const list = document.getElementById('project-list');
+    if (!state.projects.length) {
+      list.innerHTML = '<div class="empty"><div class="icon">🔧</div>No projects yet. Tap + to add one.</div>'; return;
+    }
+    list.innerHTML = state.projects.map(proj => {
+      const totalExp = proj.expenses.reduce((s, e) => s + e.amt, 0) + (proj.buyCost || 0);
+      const profit = proj.salePrice - totalExp;
+      const hasSale = proj.salePrice > 0;
+      const pillClass = !hasSale ? 'neutral' : profit >= 0 ? 'positive' : 'negative';
+      const pillText = !hasSale ? 'No sale set' : (profit >= 0 ? '+$' + profit.toFixed(2) : '-$' + Math.abs(profit).toFixed(2));
+      const resultText = !hasSale ? '—' : (profit >= 0 ? '✅ +$' + profit.toFixed(2) : '❌ -$' + Math.abs(profit).toFixed(2));
+      const resultClass = !hasSale ? '' : profit >= 0 ? 'pos' : 'neg';
+      return `
+      <div class="project-card">
+        <div class="project-header" onclick="toggleProject(${proj.id})">
+          <div class="project-icon">🔧</div>
+          <div class="project-info">
+            <div class="project-name">${escHtml(proj.name)}</div>
+            <div class="project-summary">${proj.note ? escHtml(proj.note) : 'In cost: $' + totalExp.toFixed(2)}</div>
+          </div>
+          <div class="profit-pill ${pillClass}" id="pill-${proj.id}">${pillText}</div>
+          <span class="chevron" id="chev-${proj.id}">▶</span>
+        </div>
+        <div class="project-body" id="proj-body-${proj.id}">
+          <div class="expense-section">
+            <div class="expense-label">Purchase & Expenses</div>
+            ${proj.buyCost ? `<div class="expense-item"><span class="expense-name">🛒 Purchase price</span><span class="expense-amount">$${proj.buyCost.toFixed(2)}</span></div>` : ''}
+            ${proj.expenses.map(e => `
+              <div class="expense-item">
+                <span class="expense-name">${escHtml(e.desc)}</span>
+                <div class="expense-right">
+                  <span class="expense-amount">$${e.amt.toFixed(2)}</span>
+                  <button class="expense-del" onclick="deleteExpense(${proj.id},${e.id})">✕</button>
+                </div>
+              </div>`).join('')}
+            <div class="expense-add-row">
+              <input class="desc" type="text" id="exp-desc-${proj.id}" placeholder="Part / expense..." />
+              <input class="amt" type="number" id="exp-amt-${proj.id}" placeholder="$" step="0.01" />
+              <button class="exp-add-btn" onclick="addExpense(${proj.id})">+</button>
+            </div>
+            <div class="totals-row">
+              <span>Total in:</span>
+              <strong>$${totalExp.toFixed(2)}</strong>
+            </div>
+          </div>
+          <div class="sale-row">
+            <label>Sale Price $</label>
+            <input type="number" placeholder="0.00" step="0.01"
+              value="${proj.salePrice || ''}"
+              onblur="commitSale(${proj.id}, this.value)" />
+            <span class="sale-result ${resultClass}" id="sale-result-${proj.id}">${resultText}</span>
+          </div>
+          <div style="text-align:right; padding: 4px 16px 14px;">
+            <button class="delete-project-btn" onclick="deleteProject(${proj.id})">🗑 Remove project</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function render() { renderDaily(); renderBacklog(); renderProjects(); }
+  load();
+  document.getElementById('backlog-date').valueAsDate = new Date();
+</script>
+</body>
+</html>
